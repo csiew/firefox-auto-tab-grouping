@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ungroupBtn = document.getElementById('ungroupBtn');
   
   // Pinned tabs toggle elements
-  const pinnedTabsIndicator = document.getElementById('pinnedTabsIndicator');
   const pinnedTabsText = document.getElementById('pinnedTabsText');
   const pinnedTabsToggleBtn = document.getElementById('pinnedTabsToggleBtn');
   
@@ -18,10 +17,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const regroupGroupedTabsDescription = document.getElementById('regroupGroupedTabsDescription');
   const regroupGroupedTabsToggleBtn = document.getElementById('regroupGroupedTabsToggleBtn');
 
-  // Tab placement toggle elements
-  const tabPlacementIndicator = document.getElementById('tabPlacementIndicator');
-  const tabPlacementText = document.getElementById('tabPlacementText');
-  const tabPlacementToggleBtn = document.getElementById('tabPlacementToggleBtn');
+  // Tab placement elements
+  const tabPlacementFirstInput = document.getElementById('tabPlacementFirst');
+  const tabPlacementLastInput = document.getElementById('tabPlacementLast');
+  const tabPlacementInputs = [tabPlacementFirstInput, tabPlacementLastInput];
   
   // Group management elements
   const groupNameInput = document.getElementById('groupName');
@@ -134,6 +133,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateSwitch(button, isChecked, isDisabled = false) {
     button.setAttribute('aria-checked', String(isChecked));
     button.disabled = isDisabled;
+  }
+
+  function setTabPlacementInputsDisabled(isDisabled) {
+    tabPlacementInputs.forEach(input => {
+      input.disabled = isDisabled;
+    });
   }
 
   // Add group
@@ -339,29 +344,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     regroupGroupedTabsToggleBtn.disabled = false;
   });
 
-  // Tab placement toggle functionality
-  tabPlacementToggleBtn.addEventListener('click', async () => {
-    tabPlacementToggleBtn.disabled = true;
-    try {
-      // Get current status to determine current placement
-      const currentStatus = await sendMessage({ action: 'getStatus' });
-      const newPlacement = currentStatus.tabPlacement === 'last' ? 'first' : 'last';
-      
-      const response = await sendMessage({ 
-        action: 'setTabPlacement', 
-        placement: newPlacement 
-      });
-      
-      await updateStatus();
-      showNotification(
-        `New tabs will be placed at the ${response.tabPlacement} position in groups`,
-        'success'
-      );
-    } catch (error) {
-      console.error('Error changing tab placement:', error);
-      showNotification('Failed to update tab placement setting', 'error');
-    }
-    tabPlacementToggleBtn.disabled = false;
+  // Tab placement radio functionality
+  tabPlacementInputs.forEach(input => {
+    input.addEventListener('change', async () => {
+      if (!input.checked) return;
+
+      setTabPlacementInputsDisabled(true);
+      try {
+        const response = await sendMessage({
+          action: 'setTabPlacement',
+          placement: input.value
+        });
+
+        await updateStatus();
+        showNotification(
+          `New tabs will be placed at the ${response.tabPlacement} position in groups`,
+          'success'
+        );
+      } catch (error) {
+        console.error('Error changing tab placement:', error);
+        showNotification('Failed to update tab placement setting', 'error');
+        await updateStatus();
+      }
+      setTabPlacementInputsDisabled(false);
+    });
   });
 
   // Regroup all tabs
@@ -420,13 +426,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentRules = response.rules || [];
       
       statusIndicator.className = `status-indicator ${isEnabled ? 'enabled' : 'disabled'}`;
-      statusText.textContent = isEnabled ? 'Auto-grouping enabled' : 'Auto-grouping disabled';
-      toggleBtn.textContent = isEnabled ? 'Disable' : 'Enable';
+      statusText.textContent = isEnabled
+        ? 'Tabs are automatically grouped as rules match.'
+        : 'Tabs will not be automatically grouped.';
+      updateSwitch(toggleBtn, isEnabled);
       
       // Update pinned tabs status
-      pinnedTabsIndicator.className = `status-indicator ${ignorePinnedTabs ? 'enabled' : 'disabled'}`;
-      pinnedTabsText.textContent = ignorePinnedTabs ? 'Ignoring pinned tabs' : 'Grouping pinned tabs';
-      pinnedTabsToggleBtn.textContent = ignorePinnedTabs ? 'Include Pinned' : 'Ignore Pinned';
+      pinnedTabsText.textContent = ignorePinnedTabs
+        ? 'Pinned tabs are not moved into groups.'
+        : 'Pinned tabs can be moved into matching groups.';
+      updateSwitch(pinnedTabsToggleBtn, ignorePinnedTabs);
 
       // Update strict rules status
       strictRulesDescription.textContent = strictRules
@@ -438,14 +447,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const regroupDisabled = strictRules;
       regroupGroupedTabsRow.classList.toggle('disabled', regroupDisabled);
       regroupGroupedTabsDescription.textContent = regroupDisabled
-        ? 'Strict mode moves grouped tabs to enforce matching rules.'
-        : 'Move already-grouped tabs into matching rule groups.';
+        ? 'Only available when Strict rules is disabled. Strict mode moves grouped tabs to enforce matching rules.'
+        : 'When Strict rules is disabled, move already-grouped tabs into matching rule groups.';
       updateSwitch(regroupGroupedTabsToggleBtn, regroupGroupedTabs, regroupDisabled);
       
       // Update tab placement status
-      tabPlacementIndicator.className = 'status-indicator enabled';
-      tabPlacementText.textContent = `Tab placement: ${tabPlacement === 'first' ? 'First tab' : 'Last tab'}`;
-      tabPlacementToggleBtn.textContent = tabPlacement === 'first' ? 'Place Last' : 'Place First';
+      tabPlacementFirstInput.checked = tabPlacement === 'first';
+      tabPlacementLastInput.checked = tabPlacement !== 'first';
       
       updateGroupSelect();
       renderGroupsList();

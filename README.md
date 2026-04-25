@@ -43,12 +43,12 @@ To install this extension permanently:
 
 1. **Install the Extension**: Follow the installation steps below
 2. **Open Settings**: Click on the extension icon in the toolbar to open the settings popup
-3. **Configure Settings**:
+3. **Configure Settings** in the settings card:
    - **Auto-grouping toggle**: Enable or disable automatic tab grouping
    - **Pinned tabs toggle**: Choose whether to include pinned tabs in grouping (default: ignore pinned tabs)
    - **Strict rules toggle**: Choose whether tabs outside configured rules are automatically ungrouped (default: strict rules enabled)
    - **Regroup grouped tabs toggle**: When Strict rules is disabled, choose whether tabs already in a group can move into matching rule groups (default: enabled)
-   - **Tab placement toggle**: Choose where new tabs are placed within groups - "First tab" places new tabs at the beginning of the group, "Last tab" places them at the end (default: last tab)
+   - **Tab placement options**: Choose where new tabs are placed within groups - "First tab" places new tabs at the beginning of the group, "Last tab" places them at the end (default: last tab)
 4. **Configure Groups**: 
    - In the "Groups" section, enter a group name (e.g., "Development", "Social Media")
    - Choose a color from the 8 available options
@@ -70,7 +70,7 @@ To install this extension permanently:
    - **Edit groups**: Click "Edit" next to any group to modify its name or color in-place
    - **Edit rules**: Click "Edit" next to any rule to modify its pattern, type, or group assignment
    - **Remove groups or rules**: Use the "Remove" buttons (editing makes deletion less necessary)
-   - Use control buttons to regroup all tabs, ungroup all tabs, or toggle auto-grouping
+   - Use control buttons to regroup or ungroup all tabs, and the settings card to switch auto-grouping on or off
 8. **In-Place Editing**: 
    - **Group editing**: Change group names and colors without losing existing rules
    - **Rule editing**: Modify patterns, switch between Simple/Regex types, or reassign to different groups
@@ -245,7 +245,7 @@ For comprehensive testing of the tab placement feature, see `TESTING_TAB_PLACEME
 #### Quick Test Steps:
 1. Load the extension in Firefox Developer Mode
 2. Open multiple tabs from the same domain (e.g., several GitHub pages)
-3. Test tab placement toggle:
+3. Test tab placement options:
    - Set to "First Tab" - new tabs should appear at the beginning of the group
    - Set to "Last Tab" - new tabs should appear at the end of the group
 4. Verify setting persists across browser restarts
