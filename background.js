@@ -11,6 +11,10 @@ let strictRules = true; // Default: ungroup tabs that no longer match configured
 let regroupGroupedTabs = true; // Default: move grouped tabs into matching rule groups
 let initialized = false;
 
+const BACKUP_VERSION = 1;
+const SUPPORTED_GROUP_COLORS = new Set(['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
+const SUPPORTED_RULE_TYPES = new Set(['simple', 'regex']);
+
 // TOP-LEVEL EVENT LISTENERS (Required by Firefox)
 // These must be registered synchronously at the top level
 
@@ -237,6 +241,289 @@ async function saveConfig() {
   } catch (error) {
     console.error('Error saving config:', error);
   }
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidSimplePattern(pattern) {
+  const patternRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9])?)*(\/[a-zA-Z0-9\-_\/]*)?$/;
+  if (!patternRegex.test(pattern) || pattern.length > 253) {
+    return false;
+  }
+
+  const hostnamePart = pattern.split('/')[0];
+  const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return hostnameRegex.test(hostnamePart);
+}
+
+function getCanonicalPatternRules() {
+  return Array.from(patternRules.entries()).map(([pattern, ruleData]) => ({
+    pattern,
+    groupId: ruleData.groupId,
+    type: ruleData.type || 'simple'
+  }));
+}
+
+function getBackupSettings() {
+  return {
+    isEnabled,
+    ignorePinnedTabs,
+    tabPlacement,
+    strictRules,
+    regroupGroupedTabs
+  };
+}
+
+function exportBackup() {
+  return {
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    groups: getGroupDefinitions(),
+    rules: getCanonicalPatternRules(),
+    settings: getBackupSettings()
+  };
+}
+
+function normalizeImportSections(sections = {}) {
+  const normalized = {
+    groups: Boolean(sections.groups),
+    rules: Boolean(sections.rules),
+    settings: Boolean(sections.settings)
+  };
+
+  if (normalized.rules) {
+    normalized.groups = true;
+  }
+
+  if (!normalized.groups && !normalized.rules && !normalized.settings) {
+    throw new Error('Select at least one section to import');
+  }
+
+  return normalized;
+}
+
+function validateBackupVersion(backup) {
+  if (!isPlainObject(backup)) {
+    throw new Error('Backup file must contain a JSON object');
+  }
+
+  if (backup.version !== BACKUP_VERSION) {
+    throw new Error('Unsupported backup version');
+  }
+}
+
+function validateBackupGroups(groups) {
+  if (!Array.isArray(groups)) {
+    throw new Error('Backup groups must be an array');
+  }
+
+  const importedGroups = new Map();
+
+  for (const group of groups) {
+    if (!isPlainObject(group)) {
+      throw new Error('Each group must be an object');
+    }
+
+    const groupId = typeof group.groupId === 'string' ? group.groupId.trim() : group.groupId;
+    const name = typeof group.name === 'string' ? group.name.trim() : group.name;
+    const { color } = group;
+
+    if (typeof groupId !== 'string' || groupId.trim() === '') {
+      throw new Error('Each group must have a non-empty groupId');
+    }
+
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Each group must have a non-empty name');
+    }
+
+    if (!SUPPORTED_GROUP_COLORS.has(color)) {
+      throw new Error(`Unsupported group color: ${color}`);
+    }
+
+    if (importedGroups.has(groupId)) {
+      throw new Error(`Duplicate group ID: ${groupId}`);
+    }
+
+    importedGroups.set(groupId, {
+      name,
+      color
+    });
+  }
+
+  return importedGroups;
+}
+
+function validateBackupRules(rules, importedGroups) {
+  if (!Array.isArray(rules)) {
+    throw new Error('Backup rules must be an array');
+  }
+
+  const importedRules = new Map();
+
+  for (const rule of rules) {
+    if (!isPlainObject(rule)) {
+      throw new Error('Each rule must be an object');
+    }
+
+    const groupId = typeof rule.groupId === 'string' ? rule.groupId.trim() : rule.groupId;
+    const pattern = typeof rule.pattern === 'string' ? rule.pattern.trim() : rule.pattern;
+    const type = rule.type || 'simple';
+
+    if (typeof pattern !== 'string' || pattern === '') {
+      throw new Error('Each rule must have a non-empty pattern');
+    }
+
+    if (typeof groupId !== 'string' || groupId.trim() === '') {
+      throw new Error('Each rule must have a non-empty groupId');
+    }
+
+    if (!SUPPORTED_RULE_TYPES.has(type)) {
+      throw new Error(`Unsupported rule type: ${type}`);
+    }
+
+    if (!importedGroups.has(groupId)) {
+      throw new Error(`Rule "${pattern}" references a missing group`);
+    }
+
+    if (importedRules.has(pattern)) {
+      throw new Error(`Duplicate rule pattern: ${pattern}`);
+    }
+
+    if (type === 'regex') {
+      try {
+        new RegExp(pattern);
+      } catch (error) {
+        throw new Error(`Invalid regex pattern "${pattern}": ${error.message}`);
+      }
+    } else if (!isValidSimplePattern(pattern)) {
+      throw new Error(`Invalid simple pattern: ${pattern}`);
+    }
+
+    importedRules.set(pattern, {
+      groupId,
+      type
+    });
+  }
+
+  return importedRules;
+}
+
+function validateBackupSettings(settings) {
+  if (!isPlainObject(settings)) {
+    throw new Error('Backup settings must be an object');
+  }
+
+  const importedSettings = {};
+
+  if (settings.isEnabled !== undefined) {
+    if (typeof settings.isEnabled !== 'boolean') {
+      throw new Error('Setting isEnabled must be a boolean');
+    }
+    importedSettings.isEnabled = settings.isEnabled;
+  }
+
+  if (settings.ignorePinnedTabs !== undefined) {
+    if (typeof settings.ignorePinnedTabs !== 'boolean') {
+      throw new Error('Setting ignorePinnedTabs must be a boolean');
+    }
+    importedSettings.ignorePinnedTabs = settings.ignorePinnedTabs;
+  }
+
+  if (settings.tabPlacement !== undefined) {
+    if (settings.tabPlacement !== 'first' && settings.tabPlacement !== 'last') {
+      throw new Error('Setting tabPlacement must be "first" or "last"');
+    }
+    importedSettings.tabPlacement = settings.tabPlacement;
+  }
+
+  if (settings.strictRules !== undefined) {
+    if (typeof settings.strictRules !== 'boolean') {
+      throw new Error('Setting strictRules must be a boolean');
+    }
+    importedSettings.strictRules = settings.strictRules;
+  }
+
+  if (settings.regroupGroupedTabs !== undefined) {
+    if (typeof settings.regroupGroupedTabs !== 'boolean') {
+      throw new Error('Setting regroupGroupedTabs must be a boolean');
+    }
+    importedSettings.regroupGroupedTabs = settings.regroupGroupedTabs;
+  }
+
+  if (Object.keys(importedSettings).length === 0) {
+    throw new Error('Backup settings do not include any supported settings');
+  }
+
+  return importedSettings;
+}
+
+async function importBackup(backup, sections) {
+  validateBackupVersion(backup);
+  const selectedSections = normalizeImportSections(sections);
+
+  let importedGroups = null;
+  let importedRules = null;
+  let importedSettings = null;
+
+  if (selectedSections.groups) {
+    importedGroups = validateBackupGroups(backup.groups);
+  }
+
+  if (selectedSections.rules) {
+    importedRules = validateBackupRules(backup.rules, importedGroups);
+  }
+
+  if (selectedSections.settings) {
+    importedSettings = validateBackupSettings(backup.settings);
+  }
+
+  if (selectedSections.groups) {
+    groupDefinitions = importedGroups;
+
+    if (selectedSections.rules) {
+      patternRules = importedRules;
+    } else {
+      for (const [pattern, ruleData] of patternRules.entries()) {
+        if (!groupDefinitions.has(ruleData.groupId)) {
+          patternRules.delete(pattern);
+        }
+      }
+    }
+  }
+
+  if (selectedSections.settings) {
+    if (importedSettings.isEnabled !== undefined) {
+      isEnabled = importedSettings.isEnabled;
+    }
+    if (importedSettings.ignorePinnedTabs !== undefined) {
+      ignorePinnedTabs = importedSettings.ignorePinnedTabs;
+    }
+    if (importedSettings.tabPlacement !== undefined) {
+      tabPlacement = importedSettings.tabPlacement;
+    }
+    if (importedSettings.strictRules !== undefined) {
+      strictRules = importedSettings.strictRules;
+    }
+    if (importedSettings.regroupGroupedTabs !== undefined) {
+      regroupGroupedTabs = importedSettings.regroupGroupedTabs;
+    }
+  }
+
+  activeGroups.clear();
+  await saveConfig();
+  await scanExistingGroups();
+
+  if (isEnabled) {
+    await groupExistingTabs();
+  }
+
+  return {
+    groupsImported: selectedSections.groups,
+    rulesImported: selectedSections.rules,
+    settingsImported: selectedSections.settings
+  };
 }
 
 async function scanExistingGroups() {
@@ -856,6 +1143,24 @@ function handleMessage(message, sender, sendResponse) {
         sendResponse({ error: error.message });
       }
       break;
+
+    case 'exportBackup':
+      try {
+        sendResponse({ backup: exportBackup() });
+      } catch (error) {
+        console.error('Error exporting backup:', error);
+        sendResponse({ error: error.message });
+      }
+      break;
+
+    case 'importBackup':
+      importBackup(message.backup, message.sections).then(result => {
+        sendResponse({ success: true, result });
+      }).catch(error => {
+        console.error('Error importing backup:', error);
+        sendResponse({ error: error.message });
+      });
+      return true;
 
     // Group definition management
     case 'addGroup':

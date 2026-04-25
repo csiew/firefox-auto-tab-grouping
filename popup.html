@@ -278,6 +278,64 @@
       font-size: 12px;
       line-height: 1.4;
     }
+
+    .backup-actions {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .backup-actions button {
+      margin: 0;
+      padding: 7px 12px;
+      white-space: nowrap;
+    }
+
+    .import-summary {
+      margin: 0 0 16px 0;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #f8f9fa;
+      color: #444;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .import-options {
+      display: grid;
+      gap: 8px;
+    }
+
+    .import-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: normal;
+    }
+
+    .import-option input {
+      margin: 2px 0 0 0;
+      flex: 0 0 auto;
+    }
+
+    .import-option-title {
+      display: block;
+      color: #333;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .import-option-description {
+      display: block;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.4;
+    }
     
     .secondary {
       background: #6c757d;
@@ -812,6 +870,18 @@
           </span>
         </label>
       </div>
+    </div>
+
+    <div class="settings-row switch-row">
+      <div class="switch-copy">
+        <div class="switch-title">Backup</div>
+        <div class="toggle-description">Import or export groups, rules, and settings.</div>
+      </div>
+      <div class="backup-actions">
+        <button id="importBackupBtn" class="secondary">Import</button>
+        <button id="exportBackupBtn">Export</button>
+      </div>
+      <input type="file" id="backupFileInput" accept=".json,application/json" hidden>
     </div>
   </div>
   
