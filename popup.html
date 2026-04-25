@@ -42,7 +42,7 @@
       color: #666;
       font-size: 12px;
       line-height: 1.4;
-      margin: -2px 0 8px 16px;
+      margin: 0;
     }
     
     .status-indicator {
@@ -147,6 +147,81 @@
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
+    }
+
+    .strict-rules-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .switch-row.disabled {
+      opacity: 0.55;
+    }
+
+    .switch-copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .switch-title {
+      color: #333;
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+
+    .switch-btn {
+      width: 38px;
+      height: 22px;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      margin: 0;
+      border-radius: 999px;
+      background: #c7ccd1;
+      transition: background 0.2s;
+    }
+
+    .switch-btn:hover:not(:disabled) {
+      background: #aeb5bd;
+    }
+
+    .switch-btn[aria-checked="true"] {
+      background: #0078d4;
+    }
+
+    .switch-btn[aria-checked="true"]:hover:not(:disabled) {
+      background: #106ebe;
+    }
+
+    .switch-btn:disabled {
+      background: #d7dbe0;
+      cursor: not-allowed;
+    }
+
+    .switch-btn[aria-checked="true"]:disabled {
+      background: #9ebfdb;
+    }
+
+    .switch-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      transform: translateX(0);
+      transition: transform 0.2s;
+    }
+
+    .switch-btn[aria-checked="true"] .switch-thumb {
+      transform: translateX(16px);
     }
     
     .secondary {
@@ -634,17 +709,29 @@
     <button id="pinnedTabsToggleBtn">Toggle</button>
   </div>
 
-  <div class="toggle-section">
-    <div class="status">
-      <span>
-        <span id="strictRulesIndicator" class="status-indicator"></span>
-        <span id="strictRulesText">Strict rules</span>
-      </span>
+  <div class="toggle-section strict-rules-card">
+    <div class="switch-row">
+      <div class="switch-copy">
+        <div class="switch-title">Strict rules</div>
+        <div id="strictRulesDescription" class="toggle-description">
+          Tabs outside rules are automatically ungrouped.
+        </div>
+      </div>
+      <button id="strictRulesToggleBtn" class="switch-btn" role="switch" aria-checked="true" aria-label="Strict rules">
+        <span class="switch-thumb"></span>
+      </button>
     </div>
-    <div id="strictRulesDescription" class="toggle-description">
-      Tabs outside rules are automatically ungrouped.
+    <div id="regroupGroupedTabsRow" class="switch-row disabled">
+      <div class="switch-copy">
+        <div class="switch-title">Regroup grouped tabs</div>
+        <div id="regroupGroupedTabsDescription" class="toggle-description">
+          Move already-grouped tabs into matching rule groups.
+        </div>
+      </div>
+      <button id="regroupGroupedTabsToggleBtn" class="switch-btn" role="switch" aria-checked="true" aria-label="Regroup grouped tabs" disabled>
+        <span class="switch-thumb"></span>
+      </button>
     </div>
-    <button id="strictRulesToggleBtn">Toggle</button>
   </div>
 
   <div class="toggle-section">

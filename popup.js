@@ -12,10 +12,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pinnedTabsToggleBtn = document.getElementById('pinnedTabsToggleBtn');
   
   // Strict rules toggle elements
-  const strictRulesIndicator = document.getElementById('strictRulesIndicator');
-  const strictRulesText = document.getElementById('strictRulesText');
   const strictRulesDescription = document.getElementById('strictRulesDescription');
   const strictRulesToggleBtn = document.getElementById('strictRulesToggleBtn');
+  const regroupGroupedTabsRow = document.getElementById('regroupGroupedTabsRow');
+  const regroupGroupedTabsDescription = document.getElementById('regroupGroupedTabsDescription');
+  const regroupGroupedTabsToggleBtn = document.getElementById('regroupGroupedTabsToggleBtn');
 
   // Tab placement toggle elements
   const tabPlacementIndicator = document.getElementById('tabPlacementIndicator');
@@ -129,6 +130,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       selectedColor = option.dataset.color;
     });
   });
+
+  function updateSwitch(button, isChecked, isDisabled = false) {
+    button.setAttribute('aria-checked', String(isChecked));
+    button.disabled = isDisabled;
+  }
 
   // Add group
   addGroupBtn.addEventListener('click', async () => {
@@ -316,6 +322,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     strictRulesToggleBtn.disabled = false;
   });
 
+  // Regroup grouped tabs toggle functionality
+  regroupGroupedTabsToggleBtn.addEventListener('click', async () => {
+    regroupGroupedTabsToggleBtn.disabled = true;
+    try {
+      const response = await sendMessage({ action: 'toggleRegroupGroupedTabs' });
+      await updateStatus();
+      showNotification(
+        response.regroupGroupedTabs ? 'Regrouping grouped tabs enabled' : 'Regrouping grouped tabs disabled',
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling regroup grouped tabs setting:', error);
+      showNotification('Failed to update regroup grouped tabs setting', 'error');
+    }
+    regroupGroupedTabsToggleBtn.disabled = false;
+  });
+
   // Tab placement toggle functionality
   tabPlacementToggleBtn.addEventListener('click', async () => {
     tabPlacementToggleBtn.disabled = true;
@@ -392,6 +415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const ignorePinnedTabs = response.ignorePinnedTabs;
       const tabPlacement = response.tabPlacement || 'last';
       const strictRules = response.strictRules !== undefined ? response.strictRules : true;
+      const regroupGroupedTabs = response.regroupGroupedTabs !== undefined ? response.regroupGroupedTabs : true;
       currentGroups = response.groups || [];
       currentRules = response.rules || [];
       
@@ -405,12 +429,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       pinnedTabsToggleBtn.textContent = ignorePinnedTabs ? 'Include Pinned' : 'Ignore Pinned';
 
       // Update strict rules status
-      strictRulesIndicator.className = `status-indicator ${strictRules ? 'enabled' : 'disabled'}`;
-      strictRulesText.textContent = 'Strict rules';
       strictRulesDescription.textContent = strictRules
         ? 'Tabs outside rules are automatically ungrouped.'
         : 'Matching tabs are grouped, but existing grouped tabs are kept.';
-      strictRulesToggleBtn.textContent = strictRules ? 'Disable Strict Rules' : 'Enable Strict Rules';
+      updateSwitch(strictRulesToggleBtn, strictRules);
+
+      // Update regroup grouped tabs status
+      const regroupDisabled = strictRules;
+      regroupGroupedTabsRow.classList.toggle('disabled', regroupDisabled);
+      regroupGroupedTabsDescription.textContent = regroupDisabled
+        ? 'Strict mode moves grouped tabs to enforce matching rules.'
+        : 'Move already-grouped tabs into matching rule groups.';
+      updateSwitch(regroupGroupedTabsToggleBtn, regroupGroupedTabs, regroupDisabled);
       
       // Update tab placement status
       tabPlacementIndicator.className = 'status-indicator enabled';

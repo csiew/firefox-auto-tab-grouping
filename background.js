@@ -8,6 +8,7 @@ let isEnabled = true;
 let ignorePinnedTabs = true; // Default: don't group pinned tabs
 let tabPlacement = 'last'; // Default: place new tabs at the end of the group ('first' or 'last')
 let strictRules = true; // Default: ungroup tabs that no longer match configured rules
+let regroupGroupedTabs = true; // Default: move grouped tabs into matching rule groups
 let initialized = false;
 
 // TOP-LEVEL EVENT LISTENERS (Required by Firefox)
@@ -159,7 +160,7 @@ function matchesPattern(url, pattern, patternType = 'simple') {
 
 async function loadConfig() {
   try {
-    const result = await browser.storage.local.get(['groupDefinitions', 'patternRules', 'isEnabled', 'ignorePinnedTabs', 'tabPlacement', 'strictRules']);
+    const result = await browser.storage.local.get(['groupDefinitions', 'patternRules', 'isEnabled', 'ignorePinnedTabs', 'tabPlacement', 'strictRules', 'regroupGroupedTabs']);
     
     if (result.groupDefinitions) {
       groupDefinitions = new Map(Object.entries(result.groupDefinitions));
@@ -199,6 +200,10 @@ async function loadConfig() {
     if (result.strictRules !== undefined) {
       strictRules = result.strictRules;
     }
+
+    if (result.regroupGroupedTabs !== undefined) {
+      regroupGroupedTabs = result.regroupGroupedTabs;
+    }
     
     console.log('Configuration loaded:', { 
       groupCount: groupDefinitions.size, 
@@ -206,7 +211,8 @@ async function loadConfig() {
       isEnabled,
       ignorePinnedTabs,
       tabPlacement,
-      strictRules
+      strictRules,
+      regroupGroupedTabs
     });
   } catch (error) {
     console.error('Error loading config:', error);
@@ -224,7 +230,8 @@ async function saveConfig() {
       isEnabled: isEnabled,
       ignorePinnedTabs: ignorePinnedTabs,
       tabPlacement: tabPlacement,
-      strictRules: strictRules
+      strictRules: strictRules,
+      regroupGroupedTabs: regroupGroupedTabs
     });
     console.log('Configuration saved');
   } catch (error) {
@@ -336,6 +343,11 @@ async function handleTabChange(tab) {
   const groupDef = groupDefinitions.get(groupId);
   if (!groupDef) {
     console.warn(`No group definition found for groupId: ${groupId}`);
+    return;
+  }
+
+  if (!strictRules && !regroupGroupedTabs && tab.groupId !== -1) {
+    console.log('Leaving grouped tab in its current group:', tab.url);
     return;
   }
 
@@ -477,6 +489,16 @@ async function toggleStrictRules() {
     await groupExistingTabs();
   }
   return strictRules;
+}
+
+async function toggleRegroupGroupedTabs() {
+  regroupGroupedTabs = !regroupGroupedTabs;
+  await saveConfig();
+
+  if (isEnabled) {
+    await groupExistingTabs();
+  }
+  return regroupGroupedTabs;
 }
 
 async function setTabPlacement(placement) {
@@ -780,6 +802,15 @@ function handleMessage(message, sender, sendResponse) {
       });
       return true; // Keep message channel open for async response
 
+    case 'toggleRegroupGroupedTabs':
+      toggleRegroupGroupedTabs().then(regroupGroupedTabs => {
+        sendResponse({ regroupGroupedTabs });
+      }).catch(error => {
+        console.error('Error toggling regroup grouped tabs setting:', error);
+        sendResponse({ error: error.message });
+      });
+      return true; // Keep message channel open for async response
+
     case 'setTabPlacement':
       setTabPlacement(message.placement).then(tabPlacement => {
         sendResponse({ tabPlacement });
@@ -814,6 +845,7 @@ function handleMessage(message, sender, sendResponse) {
           ignorePinnedTabs: ignorePinnedTabs,
           tabPlacement: tabPlacement,
           strictRules: strictRules,
+          regroupGroupedTabs: regroupGroupedTabs,
           configs: getGroupConfigs(),
           groups: getGroupDefinitions(),
           rules: getPatternRules(),
