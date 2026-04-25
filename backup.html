@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Import Backup - Auto Tab Grouper</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f4f6f8;
+      color: #333;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(720px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .page-description {
+      margin: 0 0 24px 0;
+      color: #666;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid #d9dee3;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #444;
+      font-weight: 500;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccd2d8;
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-size: 14px;
+    }
+
+    .message {
+      display: none;
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .message.visible {
+      display: block;
+    }
+
+    .message.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+
+    .message.success {
+      background: #e8f5e8;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+
+    .success-panel {
+      display: none;
+      padding: 28px;
+      border: 1px solid #c8e6c9;
+      border-radius: 8px;
+      background: #f1fbf1;
+      text-align: center;
+    }
+
+    .success-panel.visible {
+      display: block;
+    }
+
+    .success-panel h2 {
+      margin: 0 0 8px 0;
+      color: #2e7d32;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .success-panel p {
+      margin: 0 0 20px 0;
+      color: #3f6542;
+    }
+
+    .preview {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .preview.visible {
+      display: block;
+    }
+
+    .empty-state {
+      padding: 12px;
+      margin: 0;
+      color: #666;
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    .import-options {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .import-option {
+      padding: 12px;
+      border: 1px solid #d9dee3;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .import-option-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .import-option-header input {
+      margin-top: 3px;
+      flex: 0 0 auto;
+    }
+
+    .option-title {
+      display: block;
+      margin-bottom: 2px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .option-description {
+      display: block;
+      color: #666;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .preview-content {
+      max-height: 220px;
+      overflow: auto;
+      margin-top: 12px;
+      border: 1px solid #e3e7eb;
+      border-radius: 6px;
+      background: #fbfcfd;
+      cursor: default;
+    }
+
+    .config-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+      background: white;
+    }
+
+    .config-item:last-child {
+      border-bottom: none;
+    }
+
+    .config-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .config-pattern {
+      color: #333;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    .pattern-type-indicator {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 12px;
+      background: #e9ecef;
+      color: #495057;
+      font-weight: normal;
+      text-transform: uppercase;
+      flex: 0 0 auto;
+    }
+
+    .pattern-type-indicator.regex {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .config-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #666;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .config-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex: 0 0 auto;
+    }
+
+    .color-blue { background-color: #4285f4; }
+    .color-red { background-color: #ea4335; }
+    .color-yellow { background-color: #fbbc05; }
+    .color-green { background-color: #34a853; }
+    .color-pink { background-color: #ff69b4; }
+    .color-purple { background-color: #9c27b0; }
+    .color-cyan { background-color: #00bcd4; }
+    .color-orange { background-color: #ff9800; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    button {
+      border: none;
+      border-radius: 5px;
+      padding: 10px 16px;
+      background: #0078d4;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    button:hover:not(:disabled) {
+      background: #106ebe;
+    }
+
+    button:disabled {
+      background: #c6ccd2;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Import Backup</h1>
+    <p class="page-description">Choose an Auto Tab Grouper backup file, review what it contains, and select what to import.</p>
+
+    <div class="panel">
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+
+      <div id="importFlow">
+        <div class="form-group">
+          <label for="backupFileInput">Backup file</label>
+          <input type="file" id="backupFileInput" accept=".json,application/json">
+        </div>
+
+        <section id="preview" class="preview" aria-label="Backup preview">
+          <div class="import-options" role="group" aria-label="Backup sections to import">
+            <div class="import-option">
+              <label class="import-option-header" for="importGroupsCheckbox">
+                <input type="checkbox" id="importGroupsCheckbox" checked>
+                <span>
+                  <span class="option-title">Groups</span>
+                  <span class="option-description">Replace current group names and colors.</span>
+                </span>
+              </label>
+              <div id="groupsPreviewContent" class="preview-content"></div>
+            </div>
+
+            <div class="import-option">
+              <label class="import-option-header" for="importRulesCheckbox">
+                <input type="checkbox" id="importRulesCheckbox" checked>
+                <span>
+                  <span class="option-title">Rules</span>
+                  <span class="option-description">Replace current pattern rules. Groups are required.</span>
+                </span>
+              </label>
+              <div id="rulesPreviewContent" class="preview-content"></div>
+            </div>
+
+            <div class="import-option">
+              <label class="import-option-header" for="importSettingsCheckbox">
+                <input type="checkbox" id="importSettingsCheckbox" checked>
+                <span>
+                  <span class="option-title">Settings</span>
+                  <span class="option-description">Replace auto-grouping, pinned tabs, placement, and rule behavior settings.</span>
+                </span>
+              </label>
+              <div id="settingsPreviewContent" class="preview-content"></div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="importSelectedBtn">Import selected</button>
+          </div>
+        </section>
+      </div>
+
+      <section id="successPanel" class="success-panel" aria-live="polite">
+        <h2>Backup imported successfully</h2>
+        <p>Reopen the extension popup to see updated groups and rules.</p>
+        <button id="importAnotherBtn">Import another file</button>
+      </section>
+    </div>
+  </main>
+
+  <script src="backup.js"></script>
+</body>
+</html>

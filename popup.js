@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Backup elements
   const importBackupBtn = document.getElementById('importBackupBtn');
   const exportBackupBtn = document.getElementById('exportBackupBtn');
-  const backupFileInput = document.getElementById('backupFileInput');
   
   // Group management elements
   const groupNameInput = document.getElementById('groupName');
@@ -392,25 +391,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     exportBackupBtn.textContent = 'Export';
   });
 
-  importBackupBtn.addEventListener('click', () => {
-    backupFileInput.value = '';
-    backupFileInput.click();
-  });
-
-  backupFileInput.addEventListener('change', async () => {
-    const file = backupFileInput.files && backupFileInput.files[0];
-    if (!file) return;
+  importBackupBtn.addEventListener('click', async () => {
+    importBackupBtn.disabled = true;
 
     try {
-      const backup = JSON.parse(await file.text());
-      const preview = validateBackupPreview(backup);
-      showBackupImportModal(backup, preview);
+      await browser.tabs.create({
+        url: browser.runtime.getURL('backup.html')
+      });
     } catch (error) {
-      console.error('Error reading backup file:', error);
-      showNotification(error.message || 'Invalid backup file', 'error');
-    } finally {
-      backupFileInput.value = '';
+      console.error('Error opening import page:', error);
+      showNotification('Failed to open import page', 'error');
     }
+
+    importBackupBtn.disabled = false;
   });
 
   // Regroup all tabs
@@ -869,130 +862,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-  }
-
-  function validateBackupPreview(backup) {
-    if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
-      throw new Error('Backup file must contain a JSON object');
-    }
-
-    if (backup.version !== 1) {
-      throw new Error('Unsupported backup version');
-    }
-
-    if (!Array.isArray(backup.groups)) {
-      throw new Error('Backup groups must be an array');
-    }
-
-    if (!Array.isArray(backup.rules)) {
-      throw new Error('Backup rules must be an array');
-    }
-
-    if (backup.settings !== undefined && (!backup.settings || typeof backup.settings !== 'object' || Array.isArray(backup.settings))) {
-      throw new Error('Backup settings must be an object');
-    }
-
-    return {
-      groupCount: backup.groups.length,
-      ruleCount: backup.rules.length,
-      hasSettings: Boolean(backup.settings)
-    };
-  }
-
-  function showBackupImportModal(backup, preview) {
-    hideAllEditForms();
-
-    document.getElementById('modalTitle').textContent = 'Import Backup';
-
-    const modalContent = document.getElementById('modalContent');
-    modalContent.innerHTML = `
-      <div class="import-summary">
-        ${preview.groupCount} group${preview.groupCount === 1 ? '' : 's'}<br>
-        ${preview.ruleCount} rule${preview.ruleCount === 1 ? '' : 's'}<br>
-        Settings ${preview.hasSettings ? 'included' : 'not included'}
-      </div>
-      <div class="import-options" role="group" aria-label="Backup sections to import">
-        <label class="import-option" for="importGroupsCheckbox">
-          <input type="checkbox" id="importGroupsCheckbox" checked>
-          <span>
-            <span class="import-option-title">Groups</span>
-            <span class="import-option-description">Replace current group names and colors.</span>
-          </span>
-        </label>
-        <label class="import-option" for="importRulesCheckbox">
-          <input type="checkbox" id="importRulesCheckbox" checked>
-          <span>
-            <span class="import-option-title">Rules</span>
-            <span class="import-option-description">Replace current pattern rules. Groups are required.</span>
-          </span>
-        </label>
-        <label class="import-option" for="importSettingsCheckbox">
-          <input type="checkbox" id="importSettingsCheckbox" ${preview.hasSettings ? 'checked' : 'disabled'}>
-          <span>
-            <span class="import-option-title">Settings</span>
-            <span class="import-option-description">Replace auto-grouping, pinned tabs, placement, and rule behavior settings.</span>
-          </span>
-        </label>
-      </div>
-    `;
-
-    const groupsCheckbox = document.getElementById('importGroupsCheckbox');
-    const rulesCheckbox = document.getElementById('importRulesCheckbox');
-    const settingsCheckbox = document.getElementById('importSettingsCheckbox');
-    const modal = document.getElementById('editModal');
-    const saveBtn = document.getElementById('modalSave');
-
-    function syncRuleDependency() {
-      if (rulesCheckbox.checked) {
-        groupsCheckbox.checked = true;
-        groupsCheckbox.disabled = true;
-      } else {
-        groupsCheckbox.disabled = false;
-      }
-    }
-
-    rulesCheckbox.addEventListener('change', syncRuleDependency);
-    syncRuleDependency();
-
-    modal.style.display = 'flex';
-    saveBtn.textContent = 'Import selected';
-
-    document.getElementById('modalCancel').onclick = () => {
-      hideModal();
-    };
-
-    saveBtn.onclick = async () => {
-      const sections = {
-        groups: groupsCheckbox.checked,
-        rules: rulesCheckbox.checked,
-        settings: settingsCheckbox.checked
-      };
-
-      if (!sections.groups && !sections.rules && !sections.settings) {
-        showNotification('Select at least one section to import', 'warning');
-        return;
-      }
-
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Importing...';
-
-      try {
-        await sendMessage({
-          action: 'importBackup',
-          backup,
-          sections
-        });
-
-        hideModal();
-        await updateStatus();
-        showNotification('Backup imported successfully', 'success', 2500);
-      } catch (error) {
-        console.error('Error importing backup:', error);
-        showNotification(error.message || 'Failed to import backup', 'error');
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Import selected';
-      }
-    };
   }
 
   function hideAllEditForms() {
