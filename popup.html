@@ -37,6 +37,13 @@
       justify-content: space-between;
       margin-bottom: 8px;
     }
+
+    .toggle-description {
+      color: #666;
+      font-size: 12px;
+      line-height: 1.4;
+      margin: -2px 0 8px 16px;
+    }
     
     .status-indicator {
       display: inline-block;
@@ -625,6 +632,19 @@
       </span>
     </div>
     <button id="pinnedTabsToggleBtn">Toggle</button>
+  </div>
+
+  <div class="toggle-section">
+    <div class="status">
+      <span>
+        <span id="strictRulesIndicator" class="status-indicator"></span>
+        <span id="strictRulesText">Strict rules</span>
+      </span>
+    </div>
+    <div id="strictRulesDescription" class="toggle-description">
+      Tabs outside rules are automatically ungrouped.
+    </div>
+    <button id="strictRulesToggleBtn">Toggle</button>
   </div>
 
   <div class="toggle-section">

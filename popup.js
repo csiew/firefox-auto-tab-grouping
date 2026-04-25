@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pinnedTabsText = document.getElementById('pinnedTabsText');
   const pinnedTabsToggleBtn = document.getElementById('pinnedTabsToggleBtn');
   
+  // Strict rules toggle elements
+  const strictRulesIndicator = document.getElementById('strictRulesIndicator');
+  const strictRulesText = document.getElementById('strictRulesText');
+  const strictRulesDescription = document.getElementById('strictRulesDescription');
+  const strictRulesToggleBtn = document.getElementById('strictRulesToggleBtn');
+
   // Tab placement toggle elements
   const tabPlacementIndicator = document.getElementById('tabPlacementIndicator');
   const tabPlacementText = document.getElementById('tabPlacementText');
@@ -293,6 +299,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     pinnedTabsToggleBtn.disabled = false;
   });
 
+  // Strict rules toggle functionality
+  strictRulesToggleBtn.addEventListener('click', async () => {
+    strictRulesToggleBtn.disabled = true;
+    try {
+      const response = await sendMessage({ action: 'toggleStrictRules' });
+      await updateStatus();
+      showNotification(
+        response.strictRules ? 'Strict rules enabled' : 'Strict rules disabled',
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling strict rules setting:', error);
+      showNotification('Failed to update strict rules setting', 'error');
+    }
+    strictRulesToggleBtn.disabled = false;
+  });
+
   // Tab placement toggle functionality
   tabPlacementToggleBtn.addEventListener('click', async () => {
     tabPlacementToggleBtn.disabled = true;
@@ -368,6 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isEnabled = response.enabled;
       const ignorePinnedTabs = response.ignorePinnedTabs;
       const tabPlacement = response.tabPlacement || 'last';
+      const strictRules = response.strictRules !== undefined ? response.strictRules : true;
       currentGroups = response.groups || [];
       currentRules = response.rules || [];
       
@@ -379,6 +403,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       pinnedTabsIndicator.className = `status-indicator ${ignorePinnedTabs ? 'enabled' : 'disabled'}`;
       pinnedTabsText.textContent = ignorePinnedTabs ? 'Ignoring pinned tabs' : 'Grouping pinned tabs';
       pinnedTabsToggleBtn.textContent = ignorePinnedTabs ? 'Include Pinned' : 'Ignore Pinned';
+
+      // Update strict rules status
+      strictRulesIndicator.className = `status-indicator ${strictRules ? 'enabled' : 'disabled'}`;
+      strictRulesText.textContent = 'Strict rules';
+      strictRulesDescription.textContent = strictRules
+        ? 'Tabs outside rules are automatically ungrouped.'
+        : 'Matching tabs are grouped, but existing grouped tabs are kept.';
+      strictRulesToggleBtn.textContent = strictRules ? 'Disable Strict Rules' : 'Enable Strict Rules';
       
       // Update tab placement status
       tabPlacementIndicator.className = 'status-indicator enabled';

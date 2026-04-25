@@ -10,6 +10,7 @@ A Firefox extension that automatically organizes tabs into groups based on URL p
   - **Regular expressions**: Advanced pattern matching (e.g., `.*\.google\.com.*`, `.*(docs|documentation).*`)
 - **Pinned Tabs Control**: Option to include or ignore pinned tabs in grouping (default: ignore pinned tabs)
 - **Tab Placement Control**: Choose where new tabs are placed within groups - at the beginning (first tab) or end (last tab) of the group (default: last tab)
+- **Strict Rules Control**: Choose whether tabs outside configured rules are automatically ungrouped (default: strict rules enabled)
 - **Customizable Group Names**: Configure custom names for each URL pattern group
 - **Color-Coded Groups**: Choose from 8 different colors for visual organization
 - **Real-time Organization**: Tabs are grouped instantly when navigating to configured patterns
@@ -44,6 +45,7 @@ To install this extension permanently:
 3. **Configure Settings**:
    - **Auto-grouping toggle**: Enable or disable automatic tab grouping
    - **Pinned tabs toggle**: Choose whether to include pinned tabs in grouping (default: ignore pinned tabs)
+   - **Strict rules toggle**: Choose whether tabs outside configured rules are automatically ungrouped (default: strict rules enabled)
    - **Tab placement toggle**: Choose where new tabs are placed within groups - "First tab" places new tabs at the beginning of the group, "Last tab" places them at the end (default: last tab)
 4. **Configure Groups**: 
    - In the "Groups" section, enter a group name (e.g., "Development", "Social Media")
@@ -59,7 +61,7 @@ To install this extension permanently:
 6. **Automatic Grouping**: When you visit a configured pattern:
    - The tab will automatically be moved to the corresponding group
    - If the group doesn't exist in the browser, it will be created with your chosen name and color
-   - Tabs from unconfigured patterns will be ungrouped
+   - Tabs from unconfigured patterns will be ungrouped when Strict rules is enabled
    - Pinned tabs are ignored by default (can be changed in settings)
 7. **Manage Configuration**: 
    - **Edit groups**: Click "Edit" next to any group to modify its name or color in-place
@@ -172,7 +174,7 @@ The extension uses Firefox's native tab groups API to:
 1. **Monitor Tab Activity**: Listens for tab creation, URL changes, and tab activation
 2. **Extract Hostnames**: Automatically extracts the hostname from tab URLs (removes www. prefix)
 3. **Apply Configurations**: Matches hostnames against user-configured rules
-4. **Manage Groups**: Creates groups with custom names and colors, or ungroups tabs as needed
+4. **Manage Groups**: Creates groups with custom names and colors, and ungroups tabs outside configured rules when Strict rules is enabled
 5. **Persist Settings**: Saves all configurations using Firefox's storage API
 
 ## Icon Generation

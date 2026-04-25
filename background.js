@@ -7,6 +7,7 @@ let activeGroups = new Map(); // windowId -> Map(groupId -> tabGroupId)
 let isEnabled = true;
 let ignorePinnedTabs = true; // Default: don't group pinned tabs
 let tabPlacement = 'last'; // Default: place new tabs at the end of the group ('first' or 'last')
+let strictRules = true; // Default: ungroup tabs that no longer match configured rules
 let initialized = false;
 
 // TOP-LEVEL EVENT LISTENERS (Required by Firefox)
@@ -158,7 +159,7 @@ function matchesPattern(url, pattern, patternType = 'simple') {
 
 async function loadConfig() {
   try {
-    const result = await browser.storage.local.get(['groupDefinitions', 'patternRules', 'isEnabled', 'ignorePinnedTabs', 'tabPlacement']);
+    const result = await browser.storage.local.get(['groupDefinitions', 'patternRules', 'isEnabled', 'ignorePinnedTabs', 'tabPlacement', 'strictRules']);
     
     if (result.groupDefinitions) {
       groupDefinitions = new Map(Object.entries(result.groupDefinitions));
@@ -194,13 +195,18 @@ async function loadConfig() {
     if (result.tabPlacement !== undefined) {
       tabPlacement = result.tabPlacement;
     }
+
+    if (result.strictRules !== undefined) {
+      strictRules = result.strictRules;
+    }
     
     console.log('Configuration loaded:', { 
       groupCount: groupDefinitions.size, 
       ruleCount: patternRules.size, 
       isEnabled,
       ignorePinnedTabs,
-      tabPlacement
+      tabPlacement,
+      strictRules
     });
   } catch (error) {
     console.error('Error loading config:', error);
@@ -217,7 +223,8 @@ async function saveConfig() {
       patternRules: patternRulesObj,
       isEnabled: isEnabled,
       ignorePinnedTabs: ignorePinnedTabs,
-      tabPlacement: tabPlacement
+      tabPlacement: tabPlacement,
+      strictRules: strictRules
     });
     console.log('Configuration saved');
   } catch (error) {
@@ -314,8 +321,8 @@ async function handleTabChange(tab) {
   }
   
   if (!groupId) {
-    // No pattern rule found - ungroup the tab if it's in a group
-    if (tab.groupId !== -1) {
+    // No pattern rule found - strict rules decide whether to ungroup it.
+    if (strictRules && tab.groupId !== -1) {
       try {
         await browser.tabs.ungroup([tab.id]);
       } catch (error) {
@@ -462,6 +469,16 @@ async function toggleIgnorePinnedTabs() {
   return ignorePinnedTabs;
 }
 
+async function toggleStrictRules() {
+  strictRules = !strictRules;
+  await saveConfig();
+
+  if (isEnabled) {
+    await groupExistingTabs();
+  }
+  return strictRules;
+}
+
 async function setTabPlacement(placement) {
   if (placement !== 'first' && placement !== 'last') {
     throw new Error('Invalid tab placement. Must be "first" or "last"');
@@ -606,7 +623,7 @@ async function removePatternRule(pattern) {
   patternRules.delete(pattern);
   await saveConfig();
   
-  if (isEnabled && ruleData) {
+  if (isEnabled && strictRules && ruleData) {
     // Ungroup tabs that no longer have a rule
     const tabs = await browser.tabs.query({});
     for (const tab of tabs) {
@@ -618,6 +635,8 @@ async function removePatternRule(pattern) {
 }
 
 async function updatePatternRule(oldPattern, newPattern, groupId, type = 'simple') {
+  const oldRuleData = patternRules.get(oldPattern);
+
   // Verify the group exists
   if (!groupDefinitions.has(groupId)) {
     throw new Error('Group definition not found');
@@ -641,11 +660,14 @@ async function updatePatternRule(oldPattern, newPattern, groupId, type = 'simple
   await saveConfig();
   
   if (isEnabled) {
-    // Ungroup tabs that matched the old pattern but don't match the new one
-    const tabs = await browser.tabs.query({});
-    for (const tab of tabs) {
-      if (matchesPattern(tab.url, oldPattern) && !matchesPattern(tab.url, newPattern, type) && tab.groupId !== -1) {
-        await browser.tabs.ungroup([tab.id]);
+    if (strictRules) {
+      // Ungroup tabs that matched the old pattern but don't match the new one
+      const tabs = await browser.tabs.query({});
+      const oldPatternType = oldRuleData ? oldRuleData.type : 'simple';
+      for (const tab of tabs) {
+        if (matchesPattern(tab.url, oldPattern, oldPatternType) && !matchesPattern(tab.url, newPattern, type) && tab.groupId !== -1) {
+          await browser.tabs.ungroup([tab.id]);
+        }
       }
     }
     
@@ -749,6 +771,15 @@ function handleMessage(message, sender, sendResponse) {
       });
       return true; // Keep message channel open for async response
 
+    case 'toggleStrictRules':
+      toggleStrictRules().then(strictRules => {
+        sendResponse({ strictRules });
+      }).catch(error => {
+        console.error('Error toggling strict rules setting:', error);
+        sendResponse({ error: error.message });
+      });
+      return true; // Keep message channel open for async response
+
     case 'setTabPlacement':
       setTabPlacement(message.placement).then(tabPlacement => {
         sendResponse({ tabPlacement });
@@ -782,6 +813,7 @@ function handleMessage(message, sender, sendResponse) {
           enabled: isEnabled,
           ignorePinnedTabs: ignorePinnedTabs,
           tabPlacement: tabPlacement,
+          strictRules: strictRules,
           configs: getGroupConfigs(),
           groups: getGroupDefinitions(),
           rules: getPatternRules(),
