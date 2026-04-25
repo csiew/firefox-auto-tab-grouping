@@ -444,12 +444,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateSwitch(strictRulesToggleBtn, strictRules);
 
       // Update regroup grouped tabs status
-      const regroupDisabled = strictRules;
-      regroupGroupedTabsRow.classList.toggle('disabled', regroupDisabled);
-      regroupGroupedTabsDescription.textContent = regroupDisabled
-        ? 'Only available when Strict rules is disabled. Strict mode moves grouped tabs to enforce matching rules.'
-        : 'When Strict rules is disabled, move already-grouped tabs into matching rule groups.';
-      updateSwitch(regroupGroupedTabsToggleBtn, regroupGroupedTabs, regroupDisabled);
+      regroupGroupedTabsRow.classList.remove('disabled');
+      regroupGroupedTabsDescription.textContent = 'Move already-grouped tabs into matching rule groups.';
+      updateSwitch(regroupGroupedTabsToggleBtn, regroupGroupedTabs);
       
       // Update tab placement status
       tabPlacementFirstInput.checked = tabPlacement === 'first';

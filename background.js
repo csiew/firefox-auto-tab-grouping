@@ -346,7 +346,7 @@ async function handleTabChange(tab) {
     return;
   }
 
-  if (!strictRules && !regroupGroupedTabs && tab.groupId !== -1) {
+  if (!regroupGroupedTabs && tab.groupId !== -1) {
     console.log('Leaving grouped tab in its current group:', tab.url);
     return;
   }
