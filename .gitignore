@@ -1,0 +1,6 @@
+# Build artifacts
+releases/
+web-ext-artifacts/
+
+# System files
+.DS_Store
